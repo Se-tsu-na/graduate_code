@@ -10,7 +10,7 @@ import trimesh
 
 
 def sqr_euc_dis(vertices):
-    """Calculates the squared distances between vertices in a mesh.
+    """Calculates the squared distances between vertices in a mesh.平方距离
 
     Args:
       vertices: A trimesh.caching.TrackedArray of shape '[n, d]'.
@@ -20,16 +20,16 @@ def sqr_euc_dis(vertices):
     Returns：
       Tensor with shape '[n, n]'
     """
-    dot_mat = tf.matmul(vertices, tf.transpose(vertices))
+    dot_mat = tf.matmul(vertices, tf.transpose(vertices))  #矩阵乘法
 
-    sqr_norm_mat = tf.reshape(
-        tf.square(
-            tf.norm(
+    sqr_norm_mat = tf.reshape(  #重构
+        tf.square(  #元素平方
+            tf.norm(  #范数
                 vertices, axis=1)), [
             len(vertices), 1])
-    sqr_norm_mat = tf.tile(sqr_norm_mat, [1, len(vertices)])
+    sqr_norm_mat = tf.tile(sqr_norm_mat, [1, len(vertices)])  #维度上的复制
 
-    sqr_euc_dis = sqr_norm_mat + tf.transpose(sqr_norm_mat) - 2 * dot_mat
+    sqr_euc_dis = sqr_norm_mat + tf.transpose(sqr_norm_mat) - 2 * dot_mat  #转置
 
     return sqr_euc_dis
 
@@ -53,17 +53,21 @@ def compute_Dinv(vertices, t):
     num = len(vertices)
     Euc_Dis = sqr_euc_dis(vertices)
 
-    diagonal = tf.math.reciprocal_no_nan(
+    diagonal = tf.math.reciprocal_no_nan(  #元素倒数
         tf.math.reduce_sum(tf.math.exp(-tf.math.truediv(Euc_Dis, t)), 1)
+        # 用于查找张量的各维元素之和（降维求和）axis=0按列，1按行
+        #tensor逐个元素e^
+        #tensor按元素逐个除法
     )
     idx = [[i, i] for i in range(num)]
 
-    return tf.sparse.SparseTensor(
-        indices=idx,
-        values=diagonal,
+    return tf.sparse.SparseTensor(  #稀疏矩阵
+        indices=idx,  #非零值索引
+        values=diagonal,  #非零值tensor
         dense_shape=[
             num,
-            num])
+            num])  #shape
+    #返回值是个对角矩阵，（i，i）号元素是 e^(d(i,j)*d(i,j)/t)对j求和
 
 
 def compute_H(vertices, t):
@@ -88,6 +92,9 @@ def compute_H(vertices, t):
     H = tf.math.exp(-tf.math.truediv(Euc_Dis, t))
 
     return H
+    # 返回值是个矩阵，（i，j）号元素是 e^(d(i,j)*d(i,j)/t)
+
+    #所以这里Dinv*H到底是个什么东西
 
 
 def mesh_Laplacian(vertices, t):
